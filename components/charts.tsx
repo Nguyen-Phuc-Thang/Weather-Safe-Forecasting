@@ -264,3 +264,57 @@ export function WindGustCharts({ time, maxWindGust, maxWindSpeed, units }: { tim
         </div>
     )
 }
+
+// THUNDERSTORM CHARTS
+function MaxCapeChart({ time, maxCape, units }: { time: string[], maxCape: number[], units: any }) {
+    const data = [];
+    for (let i = 2; i < maxCape.length; i++) {
+        data.push({
+            name: time[24 * i],
+            value: maxCape[i]
+        })
+    }
+
+    return (
+        <div className="w-full h-72">
+            <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 13, fill: "#6b7280" }}
+                        axisLine={false}
+                        tickLine={false}
+                    />
+                    <YAxis
+                        tick={{ fontSize: 13, fill: "#6b7280" }}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1 * 1000) / 1000]}
+                        tickFormatter={(v) => `${v.toLocaleString()} ${units.cape}`}
+                    />
+                    <Tooltip
+                        formatter={(value) => [`${Number(value ?? 0).toLocaleString()} ${units.cape}`, "Max CAPE"]}
+                        cursor={{ fill: "#f3f4f6" }}
+                    />
+                    <Line dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                </LineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+export function ThunderstormCharts({ time, maxCape, maxWindGust, units }: { time: string[], maxCape: number[], maxWindGust: number[], units: any }) {
+    return (
+        <div className="w-full">
+            <p className='text-lg font-semibold'>Maximum CAPE</p>
+            <div className='mt-5'>
+                <MaxCapeChart time={time} maxCape={maxCape} units={units} />
+            </div>
+            <p className='text-lg font-semibold mt-8'>Maximum Wind Gust</p>
+            <div className='mt-7'>
+                <MaxWindGustChart time={time} maxWindGust={maxWindGust} units={units} />
+            </div>
+        </div>
+    )
+}

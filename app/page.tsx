@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Timeline from "@/components/Timeline";
 import { Collapsible } from "@/components/Collapsible";
-import { FloodCharts, FlashFloodCharts, WindGustCharts } from "@/components/charts";
-import { floodAdvice, flashFloodAdvice, windGustAdvice } from "@/lib/weather_logic/advices";
+import { FloodCharts, FlashFloodCharts, WindGustCharts, ThunderstormCharts } from "@/components/charts";
+import { floodAdvice, flashFloodAdvice, windGustAdvice, thunderstormAdvice } from "@/lib/weather_logic/advices";
+import { useSettings } from "@/context/SettingContext";
 
 interface Location {
   id: string;
@@ -44,6 +45,8 @@ export default function Home() {
   const [dayWeatherData, setDayWeatherData] = useState<any>(null);
   const [modesSelected, setModesSelected] = useState<boolean[]>([true, false, false, false]);
 
+  const { settings, setSettings } = useSettings();
+
   const showWeatherDataOfDay = (index: number, data: any) => {
     setDayWeatherData({
       flood: {
@@ -75,13 +78,22 @@ export default function Home() {
           windGust: data.wind.units.windGust,
           windSpeed: data.wind.units.windSpeed,
         }
+      },
+      thunderstorm: {
+        riskLevel: data.thunderstorm.riskLevel[index],
+        maxCape: data.thunderstorm.maxCapeByDay[index + 2],
+        maxWindGust: data.thunderstorm.maxWindGustByDay[index + 2],
+        units: {
+          cape: data.thunderstorm.units.cape,
+          windGust: data.thunderstorm.units.windGust
+        }
       }
     });
 
   }
 
   const fetchWeatherData = async (latitude: number, longitude: number) => {
-    const response = await fetch(`/api/weather?latitude=${latitude}&longitude=${longitude}`);
+    const response = await fetch(`/api/weather?latitude=${latitude}&longitude=${longitude}&windSpeedUnit=${settings.windSpeedUnit}&precipitationUnit=${settings.precipitationUnit}`);
     if (!response.ok) {
       return;
     }
@@ -323,6 +335,32 @@ export default function Home() {
                 </div>
               ) : null
 
+            }
+
+            {modesSelected[3] ? (
+              <div>
+                <p className='text-lg text-slate-500 mt-6 mb-3'>Thunderstorm Risk Level: <span className='text-lg text-slate-700 font-semibold '>{dayWeatherData?.thunderstorm.riskLevel}</span></p>
+                <div className="mb-4">
+                  <Collapsible title="Actionable Advice" defaultOpen={true}
+                    children={
+                      <ul className="list-disc list-outside pl-5 space-y-1 text-sm text-gray-600">
+                        {thunderstormAdvice[dayWeatherData?.thunderstorm.riskLevel]?.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    }
+                  />
+                </div>
+
+                <p className='text-lg text-slate-500 mb-2'>Max CAPE: {dayWeatherData?.thunderstorm.maxCape.toFixed(2)} {dayWeatherData?.thunderstorm.units.cape}</p>
+                <p className='text-lg text-slate-500 mb-2'>Max Wind Gust: {dayWeatherData?.thunderstorm.maxWindGust.toFixed(2)} {dayWeatherData?.thunderstorm.units.windGust}</p>
+
+                <p className='mt-6 text-2xl font-semibold'>Overall Weather Statistics</p>
+                <div className='mt-5'>
+                  <ThunderstormCharts time={weatherData?.time || []} maxCape={weatherData?.thunderstorm.maxCapeByDay || []} maxWindGust={weatherData?.thunderstorm.maxWindGustByDay || []} units={weatherData?.thunderstorm.units || {}} />
+                </div>
+              </div>
+            ) : null
             }
           </div>
         ) : null}

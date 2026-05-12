@@ -48,3 +48,10 @@ export const windGustAdvice: { [key: string]: string[] } = {
     'Warning': ['Stay indoors', 'Avoid tall trees and billboards', 'Secure roofs and windows'],
     'Danger': ['Structural damage likely', 'Power outages expected', 'Seek shelter in a sturdy building']
 }
+
+export const thunderstormAdvice: { [key: string]: string[] } = {
+    'Normal': ['No threat'],
+    'Advisory': ['Storms may develop', 'If you hear thunder, move indoors'],
+    'Warning': ['High lightning risk', 'Stay indoors and avoid electrical appliances.'],
+    'Emergency': ['Destructive winds and flash floods', 'Seek sturdy shelter immediately.']
+}
