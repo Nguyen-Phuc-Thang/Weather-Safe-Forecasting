@@ -18,14 +18,6 @@ export default function NavBar() {
                             Forecast
                         </button>
                     </Link>
-                    <Link href="/handbook">
-                        <button
-                            type="button"
-                            className="rounded-xl bg-white/5 px-4 py-2 text-lg font-medium text-slate-900 transition duration-200 ease-out hover:-translate-y-0.5 hover:text-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/40 ml-5"
-                        >
-                            Handbook
-                        </button>
-                    </Link>
                 </div>
 
                 <button

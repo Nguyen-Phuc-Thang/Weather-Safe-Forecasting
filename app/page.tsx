@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Timeline from "@/components/Timeline";
+import { Collapsible } from "@/components/Collapsible";
+import { FloodCharts, FlashFloodCharts, WindGustCharts } from "@/components/charts";
+import { floodAdvice, flashFloodAdvice, windGustAdvice } from "@/lib/weather_logic/advices";
 
 interface Location {
   id: string;
@@ -11,11 +15,70 @@ interface Location {
   country: string;
 }
 
+interface ModeButtonProps {
+  text: string;
+  selected: boolean;
+  onClick: () => void;
+}
+
+function ModeButton({ text, selected, onClick }: ModeButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 transition-colors ${selected
+        ? "bg-blue-50 text-blue-700 border-blue-400"
+        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+        }"
+        }`}
+    >
+      {text}
+    </button>
+  );
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [resultShown, setResultShown] = useState(false);
   const [searchResults, setSearchResults] = useState<Location[]>([]);
-  const [weatherData, setWeatherData] = useState<Object[]>([]);
+  const [weatherData, setWeatherData] = useState<any>({});
+  const [dayWeatherData, setDayWeatherData] = useState<any>(null);
+  const [modesSelected, setModesSelected] = useState<boolean[]>([true, false, false, false]);
+
+  const showWeatherDataOfDay = (index: number, data: any) => {
+    setDayWeatherData({
+      flood: {
+        riskLevel: data.flood.riskLevel[index],
+        riskScore: data.flood.riskScore[index],
+        precipitation: data.flood.sumPrecipitationByDay[index + 2],
+        soilMoisture: data.flood.soilMoistureStartOfDay[index + 2],
+        units: {
+          precipitation: data.flood.units.precipitation,
+          soilMoisture: data.flood.units.soilMoisture,
+        }
+      },
+      flashFlood: {
+        riskLevel: data.flashFlood.riskLevel[index],
+        riskScore: data.flashFlood.riskScore[index],
+        precipitation: data.flashFlood.maxPrecipitationByDay[index + 2],
+        soilMoisture: data.flashFlood.smSurfaceAtPrecipitationPeak[index + 2],
+        units: {
+          precipitation: data.flashFlood.units.precipitation,
+          soilMoisture: data.flashFlood.units.soilMoisture,
+        }
+      },
+      wind: {
+        riskLevel: data.wind.riskLevel[index],
+        riskWindDirection: data.wind.riskWindDirection[index],
+        maxWindGust: data.wind.maxWindGustByDay[index + 2],
+        maxWindSpeed: data.wind.maxWindSpeedByDay[index + 2],
+        units: {
+          windGust: data.wind.units.windGust,
+          windSpeed: data.wind.units.windSpeed,
+        }
+      }
+    });
+
+  }
 
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     const response = await fetch(`/api/weather?latitude=${latitude}&longitude=${longitude}`);
@@ -24,8 +87,8 @@ export default function Home() {
     }
 
     const data = await response.json();
-    setWeatherData([data]);
-    console.log(data);
+    setWeatherData(data);
+    showWeatherDataOfDay(0, data);
     setResultShown(true);
   };
 
@@ -161,16 +224,106 @@ export default function Home() {
             </div>
 
             <div className='mt-6 flex flex-row items-center'>
-              <button className='px-4 py-2 hover:border-t-2 hover:border-sky-500 focus:border-t-2 focus:border-sky-500'>Flood</button>
+              <ModeButton text="Flood" selected={modesSelected[0]} onClick={() => setModesSelected([true, false, false, false])} />
               <div className='w-[1px] h-[2rem] bg-slate-300'></div>
-              <button className='px-4 py-2 hover:border-t-2 hover:border-sky-500 focus:border-t-2 focus:border-sky-500'>Flash Flood</button>
+              <ModeButton text="Flash Flood" selected={modesSelected[1]} onClick={() => setModesSelected([false, true, false, false])} />
               <div className='w-[1px] h-[2rem] bg-slate-300'></div>
-              <button className='px-4 py-2 hover:border-t-2 hover:border-sky-500 focus:border-t-2 focus:border-sky-500'>Wind Gust</button>
+              <ModeButton text="Wind Gust" selected={modesSelected[2]} onClick={() => setModesSelected([false, false, true, false])} />
               <div className='w-[1px] h-[2rem] bg-slate-300'></div>
-              <button className='px-4 py-2 hover:border-t-2 hover:border-sky-500 focus:border-t-2 focus:border-sky-500'>Thunderstorm</button>
+              <ModeButton text="Thunderstorm" selected={modesSelected[3]} onClick={() => setModesSelected([false, false, false, true])} />
             </div>
             <div className="w-full h-[1px] bg-black"></div>
+            <div className='mt-6'>
+              <Timeline
+                onDaySelected={(dateIndex: number) => {
+                  showWeatherDataOfDay(dateIndex, weatherData);
+                }}
+              />
+            </div>
 
+            {modesSelected[0] ? (
+              <div>
+                <p className='text-lg text-slate-500 mt-6 mb-4'>Flood Risk Level: <span className='text-lg text-slate-700 font-semibold '>{dayWeatherData?.flood.riskLevel}</span></p>
+                <div className="mb-4">
+                  <Collapsible title="Actionable Advice" defaultOpen={true}
+                    children={
+                      <ul className="list-disc list-outside pl-5 space-y-1 text-sm text-gray-600">
+                        {floodAdvice[dayWeatherData?.flood.riskLevel]?.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    }
+                  />
+                </div>
+
+                <p className='text-lg text-slate-500 mb-2'>Precipitation: {dayWeatherData?.flood.precipitation.toFixed(2)} {dayWeatherData?.flood.units.precipitation}</p>
+                <p className='text-lg text-slate-500 mb-2'>Soil Moisture: {dayWeatherData?.flood.soilMoisture.toFixed(2)} {dayWeatherData?.flood.units.soilMoisture}</p>
+
+                <p className='mt-6 text-2xl font-semibold'>Overall Weather Statistics</p>
+                <div className='mt-5'>
+                  <FloodCharts time={weatherData?.time || []} precipitation={weatherData?.flood.sumPrecipitationByDay || []} soil_moisture={weatherData?.flood.soilMoistureStartOfDay || []} units={weatherData?.flood.units || {}} />
+                </div>
+              </div>
+
+
+            ) : null}
+
+            {
+              modesSelected[1] ? (
+                <div>
+                  <p className='text-lg text-slate-500 mt-6 mb-4'>Flash Flood Risk Level: <span className='text-lg text-slate-700 font-semibold '>{dayWeatherData?.flashFlood.riskLevel}</span></p>
+                  <div className="mb-4">
+                    <Collapsible title="Actionable Advice" defaultOpen={true}
+                      children={
+                        <ul className="list-disc list-outside pl-5 space-y-1 text-sm text-gray-600">
+                          {flashFloodAdvice[dayWeatherData?.flashFlood.riskLevel]?.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      }
+                    />
+                  </div>
+
+                  <p className='text-lg text-slate-500 mb-2'>Precipitation: {dayWeatherData?.flashFlood.precipitation.toFixed(2)} {dayWeatherData?.flashFlood.units.precipitation}</p>
+                  <p className='text-lg text-slate-500 mb-2'>Soil Moisture: {dayWeatherData?.flashFlood.soilMoisture.toFixed(2)} {dayWeatherData?.flashFlood.units.soilMoisture}</p>
+
+                  <p className='mt-6 text-2xl font-semibold'>Overall Weather Statistics</p>
+                  <div className='mt-5'>
+                    <FlashFloodCharts time={weatherData?.time || []} maxPrecipitation={weatherData?.flashFlood.maxPrecipitationByDay || []} soil_moisture={weatherData?.flashFlood.smSurfaceAtPrecipitationPeak || []} units={weatherData?.flashFlood.units || {}} />
+                  </div>
+                </div>
+              ) : null
+
+            }
+
+            {
+              modesSelected[2] ? (
+                <div>
+                  <p className='text-lg text-slate-500 mt-6 mb-3'>Wind Risk Level: <span className='text-lg text-slate-700 font-semibold '>{dayWeatherData?.wind.riskLevel}</span></p>
+                  <p className='text-lg text-slate-500 mb-3'>Wind Direction: {dayWeatherData?.wind.riskWindDirection}</p>
+                  <div className="mb-4">
+                    <Collapsible title="Actionable Advice" defaultOpen={true}
+                      children={
+                        <ul className="list-disc list-outside pl-5 space-y-1 text-sm text-gray-600">
+                          {windGustAdvice[dayWeatherData?.wind.riskLevel]?.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      }
+                    />
+                  </div>
+
+                  <p className='text-lg text-slate-500 mb-2'>Max Wind Gust: {dayWeatherData?.wind.maxWindGust.toFixed(2)} {dayWeatherData?.wind.units.windGust}</p>
+                  <p className='text-lg text-slate-500 mb-2'>Max Wind Speed: {dayWeatherData?.wind.maxWindSpeed.toFixed(2)} {dayWeatherData?.wind.units.windSpeed}</p>
+
+                  <p className='mt-6 text-2xl font-semibold'>Overall Weather Statistics</p>
+                  <div className='mt-5'>
+                    <WindGustCharts time={weatherData?.time || []} maxWindGust={weatherData?.wind.maxWindGustByDay || []} maxWindSpeed={weatherData?.wind.maxWindSpeedByDay || []} units={weatherData?.wind.units || {}} />
+                  </div>
+                </div>
+              ) : null
+
+            }
           </div>
         ) : null}
       </div>
